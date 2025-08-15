@@ -16,28 +16,44 @@ class Calculator:
         self.current_input = self.current_input[:-1]    #C
         
     def calculate(self):
+        #現在の入力を入れ込む
         expression = self.current_input
 
         #前処理：記号や特殊文字をPython式に変換
         expression = expression.replace('π', str(math.pi))
-        expression = re.sub(r'√(\d+)', r'math.sqrt(\1)', expression)
+        expression = re.sub(r'√(\d+(?:\.\d+)?)', r'math.sqrt(\1)', expression)
         expression = expression.replace('^', '**')
 
         try:
             #階乗（例：5! や 3+4! など）を処理
             while '!' in expression:
-                match = re.search(r'(\d+)!', expression)
+                #!の後ろの数字をマッチする
+                match = re.search(r'(\d+(?:\.\d+)?)!', expression)
                 if not match:
                     break
-                number = int(match.group(1))
-                factorial_result = str(math.factorial(number))
-                expression = expression.replace(f"{number}!", factorial_result, 1)
 
-            # 最終的な式を評価（計算）する
+                number_str = match.group(1)     #マッチした記号
+                number = float(number_str)      #確認のためフロート型に変更
+
+                if number.is_integer():
+                    factorial_result = str(math.factorial(int(number)))
+                    expression = expression.replace(f"{number_str}!", factorial_result, 1)
+                else:
+                    self.current_input = ""
+                    return "エラー"
+            #
             result = eval(expression)
+
+            #結果をフォマードし不要な.0などをなくす
+            if isinstance(result, float) and result.is_integer():
+                result = int(result)
+
+            #結果をString型で返す
             self.current_input = str(result)
             return result
+        
         except Exception:
+            #何かの問題が発生したらエラー
             self.current_input = ""
             return "エラー"
         
@@ -49,7 +65,7 @@ class calculatorGUI:
     def __init__(self, root, Calculator):
         self.Calculator = Calculator
         self.root = root
-        self.root.title = "電卓"
+        self.root.title("電卓")
         
         self.result_var = tk.StringVar()
         self.entry = tk.Entry(root, textvariable=self.result_var, font=("Arial",20), bd=10, relief="sunken", justify=   "right")
@@ -66,14 +82,11 @@ class calculatorGUI:
         ]
         
         for (text, row, col, *span) in self.buttons:
+            btn = tk.Button(root, text=text, font=("Arial", 20), width=5, height=2, command=lambda t=text:self.on_button_click(t))
             if span:
-                btn = tk.Button(root, text=text, font=("Arial", 20), width=5, height=2, command=lambda t=text: self.on_button_click(t))
-                btn.grid(row=row, column=col, columnspan=span[0])
-                
+                btn.grid(row=row, column=col, columnspan=span[0], sticky="nsew")
             else:
-                btn = tk.Button(root, text=text, font=("Arial", 20), width=5, height=2, command=lambda t=text: self.on_button_click(t))
-                btn.grid(row=row, column=col)
-                
+                btn.grid(row=row, column=col, sticky="nsew")
             #キーボード入力とバインドする
             root.bind('<Return>', lambda event: self.calculate())
             root.bind('<Key>', self.handle_keypress)
@@ -106,13 +119,17 @@ class calculatorGUI:
     #キーボード入力の処理
     def handle_keypress(self, event):
         key = event.char
-        if key.isdigit() or key in "+-*/.()^":
+        keysym = event.keysym   #エンターキーとバックスペースキーのため
+
+        allowed_chars = set("0123456789+-*/.()^!")      #数字・計算式以外入力不可
+        
+        if key in allowed_chars:
             self.Calculator.add_input(key)
         elif key.lower() == "c":
             self.Calculator.allclear_input()
-        elif key == "Backspace":
+        elif keysym == "BackSpace":
             self.Calculator.clear_input()
-        elif key == "Enter":
+        elif keysym == "Enter":
             self.calculate()
             
         self.update_display()
@@ -121,7 +138,6 @@ class calculatorGUI:
         self.result_var.set(self.Calculator.get_input())
         
         
-
 root = tk.Tk()
 calculator = Calculator()
 app = calculatorGUI(root, calculator)
