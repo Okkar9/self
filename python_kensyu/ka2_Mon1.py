@@ -23,11 +23,12 @@ class Calculator:
         expression = expression.replace('π', str(math.pi))
         expression = re.sub(r'√(\d+(?:\.\d+)?)', r'math.sqrt(\1)', expression)
         expression = expression.replace('^', '**')
-
+        #0で始まる場合0は無視される
+        expression = re.sub(r'\b0+(\d+)', r'\1', expression)
         try:
             #階乗（例：5! や 3+4! など）を処理
             while '!' in expression:
-                #!の後ろの数字をマッチする
+                #!の後ろの数字を確認する
                 match = re.search(r'(\d+(?:\.\d+)?)!', expression)
                 if not match:
                     break
